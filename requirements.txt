@@ -3,3 +3,4 @@ gradio
 requests
 sentence-transformers
 faiss-cpu
+pymupdf
