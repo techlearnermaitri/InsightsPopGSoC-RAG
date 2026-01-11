@@ -30,3 +30,10 @@ if uploaded_file:
         height=300
     )
 
+from rag_backend.chunker import chunk_text, save_chunks
+
+with st.spinner("Chunking extracted text..."):
+    chunks = chunk_text(extracted_text, chunk_size=1000, overlap=200)
+    chunk_files = save_chunks(chunks, uploaded_file.name)
+
+st.success(f"Text split into {len(chunks)} chunks ✅")
