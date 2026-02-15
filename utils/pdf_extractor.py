@@ -27,3 +27,8 @@ def save_extracted_text(text: str, filename: str):
         f.write(text)
 
     return output_path
+
+
+
+
+

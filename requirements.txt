@@ -1,6 +1,10 @@
 #requirements
-gradio
-requests
-sentence-transformers
-faiss-cpu
-pymupdf
+fastapi
+uvicorn
+python-multipart
+pypdf
+langchain-google-genai
+langchain-community
+chromadb
+google-generativeai
+
