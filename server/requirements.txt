@@ -1,0 +1,36 @@
+
+#logging
+loguru
+
+#typing and utilities
+pydantic
+requests
+tqdm
+
+#env variables
+python-dotenv
+
+#pdf parsing
+PyPDF2 #backend for langchain community 
+
+#embeddings , sentence transformers , langchain-google-generative-ai
+langchain-google-genai
+
+#vectorstore chromadb
+pinecone
+
+
+#langchain & ecosystem
+langchain
+langchain-community
+langchain-core
+langchain-groq
+
+#web franework
+fastapi
+uvicorn[standard]
+python-multipart #for file uploads
+
+
+
+#uv pip install -r requirements.txt
