@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 
+from exception_handlers import catch_exceptions_middleware
+
 #This middleware is essential for enabling communication between a
 #frontend web application and a backend API when they are hosted on 
 # different domains, ports, or protocols
@@ -21,7 +23,7 @@ app.add_middleware(
 
 #middle ware excpetion handling
 
-
+app.middleware("http")(catch_exceptions_middleware)
 
 #routers
 
