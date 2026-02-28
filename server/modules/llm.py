@@ -48,10 +48,11 @@ def get_llm_chain(retriever):
         """
         )
     return RetrievalQA.from_chain_type(
-        llm=llm,
-        chain_type="stuff",
-        retriever=retriever,
-        prompt=prompt,
-        chain_type_kwargs={"prompt": prompt}
-        return_source_documents=True     #for citatios will be goods
-    )
+    llm=llm,
+    chain_type="stuff",
+    retriever=retriever,
+    prompt=prompt,
+    chain_type_kwargs={"prompt": prompt},
+    return_source_documents=True #for citatios will be goods
+)    
+    
