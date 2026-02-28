@@ -1,0 +1,20 @@
+from fastapi import FastAPI
+
+#This middleware is essential for enabling communication between a
+#frontend web application and a backend API when they are hosted on 
+# different domains, ports, or protocols
+from fastapi.middleware.cors import CORSMiddleware
+
+
+app=FastAPI(title="InsightsPopRAG", description="A Retrieval-Augmented Generation (RAG) system for insights extraction and analysis.")
+
+
+
+# cors setup
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins (for development/public APIs only)
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+    allow_credentials=True # Allow cookies and authentication credentials (Note: conflicts with allow_origins=["*"] for browser security)
+)
