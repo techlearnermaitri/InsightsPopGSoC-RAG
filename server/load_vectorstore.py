@@ -40,3 +40,38 @@ if PINECONE_INDEX_NAME not in existing_indexes:
         time.sleep(2)
 
 index=pc.Index(PINECONE_INDEX_NAME)
+
+
+#load , split , embed and upsert pdf conetent
+def load_vector_store(uploaded_files):
+    embed_model=GoogleGenerativeAIEmbeddings(model="models/text-embedding-001")
+    file_paths=[]
+
+    #1. step1 upload 
+    for file in uploaded_files:
+        save_path=Path(UPLOAD_DIR)/file.filename
+        with open(save_path,"wb") as f :
+            f.write(file.file.read())
+        file_paths.append(str(save_path))
+    
+    #2.split
+    for file_path in file_paths:
+        loader=PyPDFLoader(file_path)
+        documents=loader.load()
+
+        splitter=RecursiveCharacterTextSplitter(chunk_size=1000,chunk_overlap=200)
+        chunks=splitter.split_documents(documents)
+
+        texts=[chunk.page_content for chunk in chunks]
+        metadata =[chunk.metadata for chunk in chunks]
+        ids=[f"{Path(file_path).stem}_{i}" for i in range(chunks)]
+#3.embedding 
+        print("embedding and upserting chunks")
+        embeddings=embed_model.embed_documents(texts)
+#4.upsert
+        print("upserting embedings")
+        with tqdm(total=len(embeddings),desc="upserting to pinecone") as progress:
+            index.upsert(vectors=zip(ids,embeddings,metadata))
+            progress.update(len(embeddings))
+
+        print(f"Finished processing for {file_path}")
