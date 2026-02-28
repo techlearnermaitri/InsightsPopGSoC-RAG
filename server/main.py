@@ -18,3 +18,14 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
     allow_credentials=True # Allow cookies and authentication credentials (Note: conflicts with allow_origins=["*"] for browser security)
 )
+
+#middle ware excpetion handling
+
+
+
+#routers
+
+#1.ypload pdfs
+
+#2. asking queries
+
