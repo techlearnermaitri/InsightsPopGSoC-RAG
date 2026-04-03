@@ -11,10 +11,10 @@ tqdm
 python-dotenv
 
 #pdf parsing
-PyPDF2 #backend for langchain community 
+pypdf#backend for langchain community 
 
 #embeddings , sentence transformers , langchain-google-generative-ai
-langchain-google-genai
+langchain-google-genaiuv 
 
 #vectorstore chromadb
 pinecone

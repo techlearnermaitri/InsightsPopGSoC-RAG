@@ -1,6 +1,6 @@
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from logger import logger
+from server.logger import logger
 
 
 async def catch_exceptions_middleware(request:Request, call_next):

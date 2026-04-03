@@ -1,6 +1,10 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from server.middlewares.exception_handlers import catch_exceptions_middleware
+from server.routes.upload_pdfs import router as upload_router
+from server.routes.ask_question import router as ask_router
 
-from exception_handlers import catch_exceptions_middleware
+
 
 #This middleware is essential for enabling communication between a
 #frontend web application and a backend API when they are hosted on 
@@ -28,6 +32,9 @@ app.middleware("http")(catch_exceptions_middleware)
 #routers
 
 #1.ypload pdfs
+app.include_router(upload_router)
 
 #2. asking queries
+
+app.include_router(ask_router)
 

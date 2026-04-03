@@ -7,7 +7,47 @@ data/embeddings/*
 # Keep folder structure
 !data/**/.gitkeep
 
+# Vector database
+rag_backend/vector_store/*
+
 # Python stuff
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+myenv/
+venv/
+env/
+ENV/
+
+# Environment variables
 .env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Node.js (for frontend)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Frontend build
+templates/research-frontend/dist/
+templates/research-frontend/.vite/
+
+# OS
+.DS_Store
+Thumbs.db
