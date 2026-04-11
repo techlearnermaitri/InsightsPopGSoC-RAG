@@ -4,7 +4,7 @@ from server.modules.llm import get_llm_chain
 from server.modules.query_handlers import query_chain
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from pinecone import Pinecone
 from pydantic import Field
 from typing import List, Optional
@@ -21,7 +21,11 @@ async def ask_question(question: str = Form(...)):
         # embed model + pinecone setup
         pc = Pinecone(api_key=os.environ.get("PINECONE_API_KEY"))
         index = pc.Index(os.environ.get("PINECONE_INDEX_NAME"))
-        embed_model = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+        embedding_model = os.getenv(
+            "EMBEDDING_MODEL",
+            "sentence-transformers/all-mpnet-base-v2",
+        )
+        embed_model = HuggingFaceEmbeddings(model_name=embedding_model)
         embedded_query = embed_model.embed_query(question)
         res = index.query(vector=embedded_query, top_k=3, include_metadata=True)
 
@@ -41,7 +45,10 @@ async def ask_question(question: str = Form(...)):
                 super().__init__()
                 self._docs = documents
 
-            def get_relevant_documents(self, query: str) -> List[Document]:
+            def _get_relevant_documents(self, query: str) -> List[Document]:
+                return self._docs
+
+            async def _aget_relevant_documents(self, query: str) -> List[Document]:
                 return self._docs
 
         retriever = SimpleRetriever(docs)

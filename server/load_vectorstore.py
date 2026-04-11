@@ -6,21 +6,23 @@ from tqdm.auto import tqdm
 from pinecone import Pinecone, ServerlessSpec
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
 # Load environment variables
 load_dotenv()
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")  
 
-# Safeguard to prevent hard-to-read crashes
-if not GOOGLE_API_KEY or not PINECONE_API_KEY:
-    raise ValueError("Missing API Keys! Please check your .env file location and contents.")
+if not PINECONE_API_KEY:
+    raise ValueError("Missing PINECONE_API_KEY! Please check your .env file location and contents.")
 
 PINECONE_ENV = "us-east-1"
 PINECONE_INDEX_NAME = "insights-pop"
 
-os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY
+EMBEDDING_MODEL = os.getenv(
+    "EMBEDDING_MODEL",
+    "sentence-transformers/all-mpnet-base-v2",
+)
+EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "768"))
  
 UPLOAD_DIR = "./uploaded_docs"
 os.makedirs(UPLOAD_DIR, exist_ok=True) 
@@ -34,7 +36,7 @@ existing_indexes = (i["name"] for i in pc.list_indexes())
 if PINECONE_INDEX_NAME not in existing_indexes:
     pc.create_index(
         name=PINECONE_INDEX_NAME,
-        dimension=768, 
+        dimension=EMBEDDING_DIM,
         metric="dotproduct",
         spec=spec
     )
@@ -46,10 +48,9 @@ index = pc.Index(PINECONE_INDEX_NAME)
 
 # Load, split, embed and upsert pdf content
 def load_vector_store(uploaded_files):
-    embed_model = GoogleGenerativeAIEmbeddings(
-        model="gemini-embedding-2-preview",
-        output_dimensionality=768,
-        google_api_key=GOOGLE_API_KEY
+    # Local embeddings to avoid Gemini quota issues during upload.
+    embed_model = HuggingFaceEmbeddings(
+        model_name=EMBEDDING_MODEL,
     )
     file_paths = []
 

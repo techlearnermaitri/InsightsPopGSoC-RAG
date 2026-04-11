@@ -5,15 +5,19 @@ from langchain_groq import ChatGroq
 import os
 from dotenv import load_dotenv
 
-
-
 load_dotenv()
 GROQ_API_KEY=os.getenv("GROQ_API_KEY")
 
 def get_llm_chain(retriever):
+    groq_model = os.getenv(
+        "GROQ_MODEL_NAME",
+        # Groq has decommissioned `llama3-70b-8192` (model_decommissioned 400).
+        # Recommended replacement per Groq deprecations:
+        "llama-3.3-70b-versatile",
+    )
     llm=ChatGroq(
         api_key=GROQ_API_KEY,
-        model_name="llama3-70b-8192"
+        model_name=groq_model,
     )
     prompt = PromptTemplate(
         input_variables=["context", "question"],
@@ -52,8 +56,8 @@ def get_llm_chain(retriever):
     llm=llm,
     chain_type="stuff",
     retriever=retriever,
-    prompt=prompt,
     chain_type_kwargs={"prompt": prompt},
-    return_source_documents=True #for citatios will be goods
+    return_source_documents=True,
+#for citatios will be goods
 )    
     
