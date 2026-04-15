@@ -46,13 +46,18 @@ if PINECONE_INDEX_NAME not in existing_indexes:
 
 index = pc.Index(PINECONE_INDEX_NAME)
 
+from server.database import DB_FILE
+import sqlite3
+
 # Load, split, embed and upsert pdf content
-def load_vector_store(uploaded_files):
+def load_vector_store(uploaded_files, user_email):
     # Local embeddings to avoid Gemini quota issues during upload.
     embed_model = HuggingFaceEmbeddings(
         model_name=EMBEDDING_MODEL,
     )
     file_paths = []
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
 
     # 1. Upload 
     for file in uploaded_files:
@@ -61,6 +66,15 @@ def load_vector_store(uploaded_files):
         with open(save_path, "wb") as f:
             f.write(content)
         file_paths.append(str(save_path))
+        
+        # Save to SQLite DB
+        cursor.execute(
+            "INSERT INTO user_files (user_email, custom_name, filename) VALUES (?, ?, ?)",
+            (user_email, file.filename, file.filename)
+        )
+    
+    conn.commit()
+    conn.close()
     
     # 2. Split
     for file_path in file_paths:
@@ -71,7 +85,12 @@ def load_vector_store(uploaded_files):
         chunks = splitter.split_documents(documents)
 
         texts = [chunk.page_content for chunk in chunks]
-        metadata = [chunk.metadata for chunk in chunks]
+        metadata = []
+        for chunk in chunks:
+            meta = chunk.metadata.copy()
+            meta["text"] = chunk.page_content
+            meta["user_email"] = user_email
+            metadata.append(meta)
         
         # FIXED BUG: Use len(chunks) instead of chunks
         ids = [f"{Path(file_path).stem}_{i}" for i in range(len(chunks))]
