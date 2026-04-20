@@ -4,7 +4,6 @@ from server.modules.llm import get_llm_chain
 from server.modules.query_handlers import query_chain
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
-from langchain_community.embeddings import HuggingFaceEmbeddings
 from pinecone import Pinecone
 from pydantic import Field
 from typing import List, Optional
@@ -43,6 +42,9 @@ async def ask_question(
                 # Match path formatting from PyPDFLoader
                 pinecone_filter["source"] = f"uploaded_docs/{real_filename}"
 
+        # Import HuggingFaceEmbeddings here (not at module level) to avoid startup hang
+        from langchain_community.embeddings import HuggingFaceEmbeddings
+        
         # embed model + pinecone setup
         pinecone_api_key = os.environ.get("PINECONE_API_KEY")
         if not pinecone_api_key:
