@@ -44,8 +44,17 @@ async def ask_question(
                 pinecone_filter["source"] = f"uploaded_docs/{real_filename}"
 
         # embed model + pinecone setup
-        pc = Pinecone(api_key=os.environ.get("PINECONE_API_KEY"))
-        index = pc.Index(os.environ.get("PINECONE_INDEX_NAME"))
+        pinecone_api_key = os.environ.get("PINECONE_API_KEY")
+        if not pinecone_api_key:
+            raise ValueError(
+                "Missing PINECONE_API_KEY! Please set this environment variable. "
+                "On Render, add it to your Environment variables. "
+                "Locally, add it to a .env file in the project root."
+            )
+        
+        pinecone_index_name = os.environ.get("PINECONE_INDEX_NAME", "insights-pop")
+        pc = Pinecone(api_key=pinecone_api_key)
+        index = pc.Index(pinecone_index_name)
         embedding_model = os.getenv(
             "EMBEDDING_MODEL",
             "sentence-transformers/all-mpnet-base-v2",

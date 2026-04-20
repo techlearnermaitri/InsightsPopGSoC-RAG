@@ -9,15 +9,20 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
 # Load environment variables — use explicit path so it works on hot-reload subprocesses
+# Try loading from .env, but don't fail if it doesn't exist (Render uses env vars directly)
 _env_path = Path(__file__).parent / ".env"
-load_dotenv(dotenv_path=_env_path)
-PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")  
+if _env_path.exists():
+    load_dotenv(dotenv_path=_env_path)
+else:
+    # Fallback: load from project root .env if it exists
+    _root_env_path = Path(__file__).parent.parent / ".env"
+    if _root_env_path.exists():
+        load_dotenv(dotenv_path=_root_env_path)
 
-if not PINECONE_API_KEY:
-    raise ValueError("Missing PINECONE_API_KEY! Please check your .env file location and contents.")
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 
 PINECONE_ENV = "us-east-1"
-PINECONE_INDEX_NAME = "insights-pop"
+PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "insights-pop")
 
 EMBEDDING_MODEL = os.getenv(
     "EMBEDDING_MODEL",
@@ -30,6 +35,13 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Initialize pinecone instance only when needed
 def get_pinecone_index():
+    if not PINECONE_API_KEY:
+        raise ValueError(
+            "Missing PINECONE_API_KEY! Please set this environment variable. "
+            "On Render, add it to your Environment variables. "
+            "Locally, add it to a .env file in the project root or server/ directory."
+        )
+    
     pc = Pinecone(api_key=PINECONE_API_KEY)
     spec = ServerlessSpec(cloud="aws", region=PINECONE_ENV)
 

@@ -1,14 +1,31 @@
 #this will handle llm response and prompt
 from langchain_core.prompts import PromptTemplate
-from langchain_classic.chains import RetrievalQA
 from langchain_groq import ChatGroq
+from langchain.chains import RetrievalQA
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
-GROQ_API_KEY=os.getenv("GROQ_API_KEY")
+
+# Load environment variables — try .env files but don't fail if missing (Render uses env vars directly)
+_env_path = Path(__file__).parent.parent / ".env"
+if _env_path.exists():
+    load_dotenv(dotenv_path=_env_path)
+else:
+    # Try root .env as fallback
+    _root_env_path = Path(__file__).parent.parent.parent / ".env"
+    if _root_env_path.exists():
+        load_dotenv(dotenv_path=_root_env_path)
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 def get_llm_chain(retriever):
+    if not GROQ_API_KEY:
+        raise ValueError(
+            "Missing GROQ_API_KEY! Please set this environment variable. "
+            "On Render, add it to your Environment variables. "
+            "Locally, add it to a .env file in the project root."
+        )
+    
     groq_model = os.getenv(
         "GROQ_MODEL_NAME",
         "llama-3.3-70b-versatile",
