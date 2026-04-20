@@ -8,8 +8,9 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
-# Load environment variables
-load_dotenv()
+# Load environment variables — use explicit path so it works on hot-reload subprocesses
+_env_path = Path(__file__).parent / ".env"
+load_dotenv(dotenv_path=_env_path)
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")  
 
 if not PINECONE_API_KEY:
