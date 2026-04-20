@@ -13,5 +13,6 @@ langchain-groq
 fastapi
 uvicorn[standard]
 python-multipart
+email-validator
 
 #uv pip install -r requirements.txt
