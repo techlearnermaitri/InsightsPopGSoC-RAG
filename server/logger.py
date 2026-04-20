@@ -17,8 +17,4 @@ def setup_logger(name="InsightsPopRAG"):
     
 logger=setup_logger()
 
-logger.info("RAG Processing complete")
-
-logger.debug("This is a debug message")
-logger.error("This is an error message")    
-logger.critical("This is a critical message")
+# Test logs removed for cleaner deployment

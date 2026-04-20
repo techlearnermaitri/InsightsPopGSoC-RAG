@@ -23,6 +23,10 @@ app.add_middleware(
 # middle ware excpetion handling
 app.middleware("http")(catch_exceptions_middleware)
 
+@app.get("/")
+async def health_check():
+    return {"status": "ok", "message": "InsightsPop API is running"}
+
 # routers
 app.include_router(upload_router)
 app.include_router(ask_router)
