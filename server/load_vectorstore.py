@@ -31,7 +31,12 @@ EMBEDDING_MODEL = os.getenv(
 EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "768"))
  
 UPLOAD_DIR = "./uploaded_docs"
-os.makedirs(UPLOAD_DIR, exist_ok=True) 
+try:
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+except Exception as e:
+    import sys
+    print(f"[WARNING] Failed to create upload directory: {e}", file=sys.stderr)
+    # Directory will be created when first needed 
 
 # Initialize pinecone instance only when needed
 def get_pinecone_index():
@@ -65,6 +70,12 @@ import sqlite3
 
 # Load, split, embed and upsert pdf content
 def load_vector_store(uploaded_files, user_email):
+    # Ensure upload directory exists before saving files
+    try:
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+    except Exception as e:
+        raise ValueError(f"Failed to create upload directory: {e}")
+    
     # Local embeddings to avoid Gemini quota issues during upload.
     embed_model = HuggingFaceEmbeddings(
         model_name=EMBEDDING_MODEL,

@@ -83,5 +83,11 @@ def init_db():
     conn.commit()
     conn.close()
 
-# Initialize on startup
-init_db()
+# Initialize on startup with error handling
+try:
+    init_db()
+except Exception as e:
+    import sys
+    print(f"[WARNING] Failed to initialize database: {e}", file=sys.stderr)
+    # Don't crash the app - the database will be created when first needed
+    pass
