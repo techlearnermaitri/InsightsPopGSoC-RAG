@@ -1,7 +1,7 @@
 #this will handle llm response and prompt
 from langchain_core.prompts import PromptTemplate
 from langchain_groq import ChatGroq
-from langchain.chains import RetrievalQA
+from langchain_community.chains import RetrievalQA
 import os
 from pathlib import Path
 from dotenv import load_dotenv
