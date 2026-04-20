@@ -28,24 +28,25 @@ EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "768"))
 UPLOAD_DIR = "./uploaded_docs"
 os.makedirs(UPLOAD_DIR, exist_ok=True) 
 
-# Initialize pinecone instance
-pc = Pinecone(api_key=PINECONE_API_KEY)
-spec = ServerlessSpec(cloud="aws", region=PINECONE_ENV)
+# Initialize pinecone instance only when needed
+def get_pinecone_index():
+    pc = Pinecone(api_key=PINECONE_API_KEY)
+    spec = ServerlessSpec(cloud="aws", region=PINECONE_ENV)
 
-existing_indexes = (i["name"] for i in pc.list_indexes())
+    existing_indexes = [i["name"] for i in pc.list_indexes()]
 
-if PINECONE_INDEX_NAME not in existing_indexes:
-    pc.create_index(
-        name=PINECONE_INDEX_NAME,
-        dimension=EMBEDDING_DIM,
-        metric="dotproduct",
-        spec=spec
-    )
-    while not pc.describe_index(PINECONE_INDEX_NAME).status["ready"]:
-        print("Waiting for index to be ready...")  
-        time.sleep(2)
+    if PINECONE_INDEX_NAME not in existing_indexes:
+        pc.create_index(
+            name=PINECONE_INDEX_NAME,
+            dimension=EMBEDDING_DIM,
+            metric="dotproduct",
+            spec=spec
+        )
+        while not pc.describe_index(PINECONE_INDEX_NAME).status["ready"]:
+            print("Waiting for index to be ready...")  
+            time.sleep(2)
 
-index = pc.Index(PINECONE_INDEX_NAME)
+    return pc.Index(PINECONE_INDEX_NAME)
 
 from server.database import DB_FILE
 import sqlite3
@@ -102,6 +103,7 @@ def load_vector_store(uploaded_files, user_email):
         
         # 4. Upsert
         print("Upserting embeddings...")
+        index = get_pinecone_index()
         with tqdm(total=len(embeddings), desc="Upserting to Pinecone") as progress:
             # zip needs to be converted to a list for Pinecone
             vectors_to_upsert = list(zip(ids, embeddings, metadata))
