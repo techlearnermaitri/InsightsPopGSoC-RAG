@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>InsightsPop — Turn PDFs into Insight</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap"
+    rel="stylesheet">
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --purple: #7c3aed;
+      --purple-light: #a78bfa;
+      --purple-dim: #4c1d95;
+      --purple-glow: rgba(124, 58, 237, 0.18);
+      --bg: #060608;
+      --surface: rgba(255, 255, 255, 0.03);
+      --border: rgba(255, 255, 255, 0.07);
+      --text: #f0eef8;
+      --muted: rgba(240, 238, 248, 0.45);
+      --font-display: 'Playfair Display', Georgia, serif;
+      --font-body: 'DM Sans', system-ui, sans-serif;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 16px;
+      line-height: 1.6;
+      overflow-x: hidden;
+      cursor: default;
+    }
+
+    /* ── NOISE OVERLAY ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 999;
+      opacity: 0.4;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.4rem 4rem;
+      background: linear-gradient(to bottom, rgba(6, 6, 8, 0.9) 0%, transparent 100%);
+      backdrop-filter: blur(0px);
+      transition: background 0.4s, backdrop-filter 0.4s;
+    }
+
+    nav.scrolled {
+      background: rgba(6, 6, 8, 0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .nav-logo img {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+      filter: drop-shadow(0 0 8px var(--purple));
+    }
+
+    .nav-wordmark {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      background: linear-gradient(135deg, #fff 30%, var(--purple-light));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2.5rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--text);
+    }
+
+    .nav-cta {
+      background: transparent;
+      border: 1px solid rgba(124, 58, 237, 0.5);
+      color: var(--purple-light) !important;
+      padding: 0.45rem 1.2rem;
+      border-radius: 2rem;
+      font-size: 0.82rem !important;
+      transition: background 0.2s, border-color 0.2s !important;
+    }
+
+    .nav-cta:hover {
+      background: var(--purple-glow) !important;
+      border-color: var(--purple) !important;
+      color: #fff !important;
+    }
+
+    /* ── HERO ── */
+    #hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .hero-video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.22;
+      filter: saturate(1.4) brightness(0.8);
+    }
+
+    .hero-overlay {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 70% 60% at 50% 40%, rgba(76, 29, 149, 0.3) 0%, transparent 70%),
+        linear-gradient(to bottom, transparent 50%, var(--bg) 100%);
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      max-width: 780px;
+      padding: 0 2rem;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(124, 58, 237, 0.12);
+      border: 1px solid rgba(124, 58, 237, 0.3);
+      border-radius: 2rem;
+      padding: 0.35rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--purple-light);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 2rem;
+      animation: fadeUp 0.8s ease both;
+    }
+
+    .hero-badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--purple-light);
+      box-shadow: 0 0 6px var(--purple-light);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: 0.3
+      }
+    }
+
+    h1 {
+      font-family: var(--font-display);
+      font-size: clamp(3rem, 7vw, 5.5rem);
+      font-weight: 400;
+      line-height: 1.08;
+      letter-spacing: -0.02em;
+      margin-bottom: 1.5rem;
+      animation: fadeUp 0.9s 0.1s ease both;
+    }
+
+    h1 em {
+      font-style: italic;
+      background: linear-gradient(135deg, var(--purple-light) 0%, #c084fc 50%, #818cf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-sub {
+      color: var(--muted);
+      font-size: 1.05rem;
+      max-width: 480px;
+      margin: 0 auto 2.8rem;
+      font-weight: 300;
+      line-height: 1.7;
+      animation: fadeUp 1s 0.2s ease both;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      animation: fadeUp 1s 0.35s ease both;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--purple), #6d28d9);
+      color: #fff;
+      border: none;
+      border-radius: 2rem;
+      padding: 0.85rem 2.2rem;
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      box-shadow: 0 0 30px rgba(124, 58, 237, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 50px rgba(124, 58, 237, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 2rem;
+      padding: 0.85rem 2rem;
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      font-weight: 400;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-ghost:hover {
+      color: var(--text);
+      border-color: rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .play-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1px solid var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.55rem;
+      padding-left: 2px;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(28px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ── SCROLL INDICATOR ── */
+    .scroll-hint {
+      position: absolute;
+      bottom: 2.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      opacity: 0.35;
+      z-index: 2;
+      animation: fadeIn 2s 1.5s both;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0
+      }
+
+      to {
+        opacity: 0.35
+      }
+    }
+
+    .scroll-hint span {
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .scroll-line {
+      width: 1px;
+      height: 40px;
+      background: linear-gradient(to bottom, var(--purple-light), transparent);
+      animation: scrollLine 2s ease infinite;
+    }
+
+    @keyframes scrollLine {
+      0% {
+        transform: scaleY(0);
+        transform-origin: top;
+        opacity: 1;
+      }
+
+      50% {
+        transform: scaleY(1);
+        transform-origin: top;
+        opacity: 1;
+      }
+
+      100% {
+        transform: scaleY(1);
+        transform-origin: top;
+        opacity: 0;
+      }
+    }
+
+    /* ── SECTIONS ── */
+    section {
+      padding: 8rem 2rem;
+    }
+
+    .container {
+      max-width: 1040px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--purple-light);
+      margin-bottom: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .section-label::before {
+      content: '';
+      display: inline-block;
+      width: 20px;
+      height: 1px;
+      background: var(--purple-light);
+    }
+
+    /* ── DEMO ── */
+    #demo {
+      background: transparent;
+    }
+
+    .demo-heading {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      font-weight: 400;
+      line-height: 1.15;
+      margin-bottom: 4rem;
+      max-width: 600px;
+      letter-spacing: -0.01em;
+    }
+
+    .demo-panel {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5px;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      box-shadow: 0 0 80px rgba(76, 29, 149, 0.2), 0 0 0 1px rgba(124, 58, 237, 0.1);
+      position: relative;
+    }
+
+    .demo-panel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(124, 58, 237, 0.08), transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .demo-pdf,
+    .demo-chat {
+      background: rgba(255, 255, 255, 0.025);
+      backdrop-filter: blur(16px);
+      padding: 2rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .demo-pdf {
+      border-right: 1px solid var(--border);
+    }
+
+    .panel-header {
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .panel-header::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--purple-light);
+      opacity: 0.6;
+    }
+
+    .pdf-page {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      min-height: 280px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .pdf-highlight {
+      background: rgba(124, 58, 237, 0.15);
+      border-left: 2px solid var(--purple);
+      padding: 0.5rem 0.8rem;
+      border-radius: 0 4px 4px 0;
+      margin: 0.6rem 0;
+      font-size: 0.78rem;
+      color: rgba(240, 238, 248, 0.7);
+      transition: background 0.3s;
+    }
+
+    .pdf-highlight.active {
+      background: rgba(124, 58, 237, 0.3);
+      border-left-color: var(--purple-light);
+      color: var(--text);
+    }
+
+    .pdf-line {
+      height: 8px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.06);
+      margin: 0.55rem 0;
+    }
+
+    .pdf-scan-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(to right, transparent, rgba(124, 58, 237, 0.6), transparent);
+      top: 0;
+      animation: scan 4s ease-in-out infinite;
+    }
+
+    @keyframes scan {
+      0% {
+        top: 0%;
+        opacity: 0;
+      }
+
+      10% {
+        opacity: 1;
+      }
+
+      90% {
+        opacity: 1;
+      }
+
+      100% {
+        top: 100%;
+        opacity: 0;
+      }
+    }
+
+    /* chat */
+    .chat-messages {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      min-height: 280px;
+    }
+
+    .msg {
+      display: flex;
+      gap: 0.6rem;
+      align-items: flex-start;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.4s, transform 0.4s;
+    }
+
+    .msg.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .msg-user {
+      flex-direction: row-reverse;
+    }
+
+    .msg-avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.6rem;
+      font-weight: 500;
+    }
+
+    .msg-avatar.ai {
+      background: linear-gradient(135deg, var(--purple), #6d28d9);
+      color: #fff;
+      box-shadow: 0 0 10px rgba(124, 58, 237, 0.4);
+    }
+
+    .msg-avatar.user {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--muted);
+      font-size: 0.55rem;
+    }
+
+    .msg-bubble {
+      padding: 0.65rem 0.9rem;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      line-height: 1.5;
+      max-width: 85%;
+    }
+
+    .msg-user .msg-bubble {
+      background: rgba(124, 58, 237, 0.15);
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      border-top-right-radius: 4px;
+      color: rgba(240, 238, 248, 0.85);
+    }
+
+    .msg-ai .msg-bubble {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-top-left-radius: 4px;
+      color: var(--text);
+    }
+
+    .typing-cursor {
+      display: inline-block;
+      width: 2px;
+      height: 12px;
+      background: var(--purple-light);
+      margin-left: 2px;
+      vertical-align: middle;
+      animation: blink 0.9s infinite;
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: 0
+      }
+    }
+
+    .chat-input-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-top: 1.2rem;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.6rem 0.8rem;
+      transition: border-color 0.2s;
+    }
+
+    .chat-input-bar:focus-within {
+      border-color: rgba(124, 58, 237, 0.4);
+    }
+
+    .chat-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      placeholder-color: var(--muted);
+    }
+
+    .chat-send {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: var(--purple);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, transform 0.15s;
+      color: #fff;
+      font-size: 0.7rem;
+    }
+
+    .chat-send:hover {
+      background: #6d28d9;
+      transform: scale(1.05);
+    }
+
+    /* ── VALUES ── */
+    #values {
+      text-align: center;
+    }
+
+    .values-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      margin-top: 3rem;
+    }
+
+    .value-item {
+      padding: 3.5rem 2rem;
+      border: 1px solid transparent;
+      position: relative;
+      overflow: hidden;
+      cursor: default;
+      transition: background 0.3s;
+    }
+
+    .value-item+.value-item {
+      border-left: 1px solid var(--border);
+    }
+
+    .value-item:hover {
+      background: rgba(124, 58, 237, 0.04);
+    }
+
+    .value-item::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(124, 58, 237, 0.4), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .value-item:hover::before {
+      opacity: 1;
+    }
+
+    .value-number {
+      font-size: 0.7rem;
+      color: var(--purple-light);
+      letter-spacing: 0.08em;
+      margin-bottom: 1.5rem;
+      opacity: 0.7;
+    }
+
+    .value-statement {
+      font-family: var(--font-display);
+      font-size: clamp(1.6rem, 3vw, 2.4rem);
+      font-weight: 400;
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+    }
+
+    .value-statement em {
+      font-style: italic;
+      background: linear-gradient(135deg, var(--purple-light), #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .value-desc {
+      margin-top: 1rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-weight: 300;
+      line-height: 1.6;
+    }
+
+    /* ── HOW IT WORKS ── */
+    #how {
+      text-align: center;
+    }
+
+    .steps {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 0;
+      margin-top: 4rem;
+      position: relative;
+    }
+
+    .step {
+      flex: 1;
+      padding: 0 2rem;
+      position: relative;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.5s, transform 0.5s;
+    }
+
+    .step.in-view {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .step:nth-child(1) {
+      transition-delay: 0s;
+    }
+
+    .step:nth-child(2) {
+      transition-delay: 0.15s;
+    }
+
+    .step:nth-child(3) {
+      transition-delay: 0.3s;
+    }
+
+    .step-connector {
+      position: absolute;
+      top: 26px;
+      right: -50%;
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(to right, rgba(124, 58, 237, 0.5), transparent);
+      pointer-events: none;
+    }
+
+    .step:last-child .step-connector {
+      display: none;
+    }
+
+    .step-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: rgba(124, 58, 237, 0.1);
+      border: 1px solid rgba(124, 58, 237, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+      font-size: 1.2rem;
+      box-shadow: 0 0 20px rgba(124, 58, 237, 0.15);
+      transition: box-shadow 0.3s, background 0.3s;
+    }
+
+    .step:hover .step-icon {
+      background: rgba(124, 58, 237, 0.2);
+      box-shadow: 0 0 30px rgba(124, 58, 237, 0.3);
+    }
+
+    .step-title {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 400;
+      margin-bottom: 0.6rem;
+    }
+
+    .step-desc {
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-weight: 300;
+      line-height: 1.6;
+    }
+
+    /* ── FINAL CTA ── */
+    #cta {
+      text-align: center;
+      background: linear-gradient(to bottom, transparent, rgba(76, 29, 149, 0.08) 40%, transparent);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .cta-headline {
+      font-family: var(--font-display);
+      font-size: clamp(2.4rem, 5vw, 4rem);
+      font-weight: 400;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      margin-bottom: 1.2rem;
+    }
+
+    .cta-headline em {
+      font-style: italic;
+      background: linear-gradient(135deg, #fff 20%, var(--purple-light) 60%, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .cta-sub {
+      color: var(--muted);
+      font-size: 1rem;
+      font-weight: 300;
+      max-width: 400px;
+      margin: 0 auto 2.5rem;
+    }
+
+    .cta-btn-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-cta-main {
+      background: linear-gradient(135deg, var(--purple), #6d28d9, #5b21b6);
+      color: #fff;
+      border: none;
+      border-radius: 2rem;
+      padding: 1rem 3rem;
+      font-family: var(--font-body);
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      letter-spacing: 0.01em;
+      box-shadow: 0 0 40px rgba(124, 58, 237, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      transition: transform 0.2s, box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-cta-main::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to right, transparent 0%, rgba(255, 255, 255, 0.12) 50%, transparent 100%);
+      transform: translateX(-100%);
+      transition: transform 0.5s;
+    }
+
+    .btn-cta-main:hover::before {
+      transform: translateX(100%);
+    }
+
+    .btn-cta-main:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 0 60px rgba(124, 58, 237, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+
+    .no-credit {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 1.2rem;
+      letter-spacing: 0.02em;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      padding: 3rem 4rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .footer-logo img {
+      width: 20px;
+      height: 20px;
+      object-fit: contain;
+      filter: drop-shadow(0 0 4px var(--purple)) grayscale(0.3);
+      opacity: 0.6;
+    }
+
+    .footer-copy {
+      font-size: 0.75rem;
+      color: rgba(240, 238, 248, 0.2);
+    }
+
+    /* ── SCROLL REVEAL ── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+
+    .reveal.in-view {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ── CUSTOM CURSOR ── */
+    .cursor-glow {
+      position: fixed;
+      width: 280px;
+      height: 280px;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 998;
+      background: radial-gradient(circle, rgba(124, 58, 237, 0.07) 0%, transparent 70%);
+      transform: translate(-50%, -50%);
+      transition: left 0.15s, top 0.15s;
+    }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(6, 6, 8, 0.85);
+      backdrop-filter: blur(12px);
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(124, 58, 237, 0.25);
+      border-radius: 20px;
+      padding: 3rem;
+      max-width: 400px;
+      width: 90%;
+      text-align: center;
+      animation: fadeUp 0.3s ease both;
+      box-shadow: 0 0 80px rgba(76, 29, 149, 0.3);
+    }
+
+    .modal h2 {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      font-weight: 400;
+      margin-bottom: 0.6rem;
+    }
+
+    .modal p {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 2rem;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 1.2rem;
+      right: 1.5rem;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .modal-close:hover {
+      color: var(--text);
+    }
+
+    .modal-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+
+    .modal-input {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .modal-input:focus {
+      border-color: rgba(124, 58, 237, 0.5);
+    }
+
+    .modal-input::placeholder {
+      color: rgba(240, 238, 248, 0.25);
+    }
+
+    .modal-submit {
+      background: linear-gradient(135deg, var(--purple), #6d28d9);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 0.85rem;
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      box-shadow: 0 0 20px rgba(124, 58, 237, 0.35);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .modal-submit:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 30px rgba(124, 58, 237, 0.5);
+    }
+
+    .modal {
+      position: relative;
+    }
+
+    /* ── VIDEO MODAL ── */
+    .video-modal .modal {
+      max-width: 700px;
+      padding: 1.5rem;
+    }
+
+    .video-modal video {
+      width: 100%;
+      border-radius: 12px;
+    }
+
+    @media (max-width: 768px) {
+      nav {
+        padding: 1.2rem 1.5rem;
+      }
+
+      .nav-links {
+        display: none;
+      }
+
+      .demo-panel {
+        grid-template-columns: 1fr;
+      }
+
+      .demo-pdf {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .values-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .value-item+.value-item {
+        border-left: none;
+        border-top: 1px solid var(--border);
+      }
+
+      .steps {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .step {
+        max-width: 280px;
+      }
+
+      .step-connector {
+        display: none;
+      }
+
+      footer {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Cursor glow -->
+  <div class="cursor-glow" id="cursorGlow"></div>
+
+  <!-- Nav -->
+  <nav id="navbar">
+    <div class="nav-logo">
+      <img src="/Users/maitridushyantmore/Desktop/Coding-folder/InsightsPopGSoC-RAG/logo1.png" alt="InsightsPop logo">
+      <span class="nav-wordmark">InsightsPop</span>
+    </div>
+    <ul class="nav-links">
+      <li><a href="#demo">Demo</a></li>
+      <li><a href="#values">Features</a></li>
+      <li><a href="#how">How it works</a></li>
+      <li><a href="/auth" class="nav-cta" id="nav-signup-btn">Sign Up</a></li>
+    </ul>
+  </nav>
+
+  <!-- Hero -->
+  <section id="hero">
+    <video class="hero-video" autoplay muted loop playsinline>
+      <source src="/Users/maitridushyantmore/Desktop/Coding-folder/InsightsPopGSoC-RAG/Untitled design.mp4"
+        type="video/mp4">
+    </video>
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <div class="hero-badge">Made by Maitri</div>
+      <h1>Turn PDFs into<br><em>Insight.</em></h1>
+      <p class="hero-sub">Stop reading everything. Start understanding what matters. Ask questions, get answers straight
+        from your research.</p>
+      <div class="hero-actions">
+        <button class="btn-primary" id="hero-signup-btn" onclick="goToSignup()">Get Started</button>
+
+      </div>
+    </div>
+    <div class="scroll-hint">
+      <span>Scroll</span>
+      <div class="scroll-line"></div>
+    </div>
+  </section>
+
+  <!-- Interactive Demo -->
+  <section id="demo">
+    <div class="container">
+      <div class="section-label reveal">See what the site is like </div>
+      <h2 class="demo-heading reveal" style="transition-delay:0.1s">
+        Your PDFs on the left.<br>Your answers on the right.
+      </h2>
+      <div class="demo-panel reveal" style="transition-delay:0.2s">
+        <!-- PDF Panel -->
+        <div class="demo-pdf">
+          <div class="panel-header">Research Paper.pdf</div>
+          <div class="pdf-page" id="pdfPage">
+            <div class="pdf-scan-line"></div>
+            <div class="pdf-line" style="width:90%"></div>
+            <div class="pdf-line" style="width:75%; margin-top:4px"></div>
+            <div class="pdf-highlight" id="h1">
+              "The model demonstrated 94.3% accuracy in low-resource settings, outperforming baselines by 18.7%..."
+            </div>
+            <div class="pdf-line" style="width:88%"></div>
+            <div class="pdf-line" style="width:60%"></div>
+            <div class="pdf-highlight" id="h2">
+              "Using the power of Llama 2"
+            </div>
+            <div class="pdf-line" style="width:80%"></div>
+            <div class="pdf-line" style="width:70%"></div>
+            <div class="pdf-highlight" id="h3">
+              "We propose a novel attention mechanism that reduces computation by 40% while preserving..."
+            </div>
+            <div class="pdf-line" style="width:85%"></div>
+            <div class="pdf-line" style="width:55%"></div>
+          </div>
+        </div>
+        <!-- Chat Panel -->
+        <div class="demo-chat">
+          <div class="panel-header">AI Research Assistant</div>
+          <div class="chat-messages" id="chatMessages">
+            <div class="msg msg-user" id="m0">
+              <div class="msg-avatar user">You</div>
+              <div class="msg-bubble">What was the model's accuracy?</div>
+            </div>
+            <div class="msg msg-ai" id="m1">
+              <div class="msg-avatar ai">IP</div>
+              <div class="msg-bubble" id="b1"></div>
+            </div>
+            <div class="msg msg-user" id="m2" style="display:none">
+              <div class="msg-avatar user">You</div>
+              <div class="msg-bubble">How was it trained?</div>
+            </div>
+            <div class="msg msg-ai" id="m3" style="display:none">
+              <div class="msg-avatar ai">IP</div>
+              <div class="msg-bubble" id="b3"></div>
+            </div>
+          </div>
+          <div class="chat-input-bar">
+            <input class="chat-input" id="chatInput" placeholder="Ask anything about your PDF..." type="text">
+            <button class="chat-send" onclick="sendUserMsg()">↑</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Values -->
+  <section id="values">
+    <div class="container">
+      <div class="section-label reveal" style="justify-content:center">Why InsightsPop</div>
+      <div class="values-grid">
+        <div class="value-item reveal">
+          <div class="value-number">01</div>
+          <div class="value-statement">Read less.<br><em>Understand more.</em></div>
+          <p class="value-desc">Let the AI surface what matters. Skip the fluff, get the finding.</p>
+        </div>
+        <div class="value-item reveal" style="transition-delay:0.1s">
+          <div class="value-number">02</div>
+          <div class="value-statement">Ask<br><em>anything.</em></div>
+          <p class="value-desc">From methodology to conclusions — your PDF answers every question you have.</p>
+        </div>
+        <div class="value-item reveal" style="transition-delay:0.2s">
+          <div class="value-number">03</div>
+          <div class="value-statement">All your research.<br><em>One place.</em></div>
+          <p class="value-desc">Upload dozens of papers. Ask across all of them. Get a single, clear answer.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section id="how">
+    <div class="container">
+      <div class="section-label reveal" style="justify-content:center">The Process</div>
+      <h2 class="reveal"
+        style="font-family:'Playfair Display',serif;font-size:clamp(1.8rem,3.5vw,2.8rem);font-weight:400;margin-bottom:0.5rem;letter-spacing:-0.01em;transition-delay:0.05s">
+        Three steps to clarity.
+      </h2>
+      <p class="reveal" style="color:var(--muted);font-size:0.95rem;transition-delay:0.1s;margin-bottom:0">
+        No setup. No learning curve. Just upload and ask.
+      </p>
+      <div class="steps" id="stepsContainer">
+        <div class="step" data-step="0">
+          <div class="step-icon">📄</div>
+          <div class="step-title">Upload</div>
+          <p class="step-desc">Drop any PDF — research papers, reports, books, contracts. We handle the rest.</p>
+          <div class="step-connector"></div>
+        </div>
+        <div class="step" data-step="1">
+          <div class="step-icon">💬</div>
+          <div class="step-title">Ask</div>
+          <p class="step-desc">Type your question in plain English. No special syntax, no prompts to learn.</p>
+          <div class="step-connector"></div>
+        </div>
+        <div class="step" data-step="2">
+          <div class="step-icon">✦</div>
+          <div class="step-title">Get Insights</div>
+          <p class="step-desc">Receive precise, cited answers drawn directly from your document's content.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <section id="cta">
+    <div class="container">
+      <h2 class="cta-headline reveal">
+        Start <em>understanding</em><br>your PDFs.
+      </h2>
+      <p class="cta-sub reveal" style="transition-delay:0.1s">
+        Join researchers, analysts, and curious minds who read less but know more.
+      </p>
+      <div class="cta-btn-wrap reveal" style="transition-delay:0.2s">
+        <button class="btn-cta-main" id="cta-signup-btn" onclick="goToSignup()">Create Free Account</button>
+      </div>
+      <p class="no-credit reveal" style="transition-delay:0.3s">No credit card required · Free forever on the starter
+        plan</p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-logo">
+      <img src="/Users/maitridushyantmore/Desktop/Coding-folder/InsightsPopGSoC-RAG/logo1.png" alt="">
+      InsightsPop
+    </div>
+    <p class="footer-copy">InsightsPop by maitri. </p>
+  </footer>
+
+  <!-- Signup Modal -->
+  <div class="modal-overlay" id="signupModal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal('signupModal')">✕</button>
+      <h2>Get Started</h2>
+      <p>Create your free account and start turning PDFs into insight today.</p>
+      <div class="modal-form">
+        <input class="modal-input" type="email" placeholder="your@email.com">
+        <input class="modal-input" type="password" placeholder="Choose a password">
+        <button class="modal-submit">Create Account →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Video Modal -->
+  <div class="modal-overlay video-modal" id="videoModal">
+    <div class="modal" style="position:relative">
+      <button class="modal-close" onclick="closeModal('videoModal')">✕</button>
+      <video autoplay muted loop playsinline style="width:100%;border-radius:12px">
+        <source src="Untitled_design.mp4" type="video/mp4">
+      </video>
+    </div>
+  </div>
+
+  <script>
+    /* ── CURSOR GLOW ── */
+    const glow = document.getElementById('cursorGlow');
+    document.addEventListener('mousemove', e => {
+      glow.style.left = e.clientX + 'px';
+      glow.style.top = e.clientY + 'px';
+    });
+
+    /* ── NAV SCROLL ── */
+    window.addEventListener('scroll', () => {
+      document.getElementById('navbar').classList.toggle('scrolled', scrollY > 60);
+    });
+
+    /* ── MODALS ── */
+    function openSignup() { document.getElementById('signupModal').classList.add('open'); }
+    function goToSignup() { window.location.href = 'http://localhost:3000/auth'; }
+    function openVideo() { document.getElementById('videoModal').classList.add('open'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+    document.querySelectorAll('.modal-overlay').forEach(m => {
+      m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+    });
+
+    /* ── SCROLL REVEAL ── */
+    const revealObs = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('in-view'); });
+    }, { threshold: 0.12 });
+    document.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
+
+    const stepObs = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('in-view'); });
+    }, { threshold: 0.2 });
+    document.querySelectorAll('.step').forEach(el => stepObs.observe(el));
+
+    /* ── CHAT ANIMATION ── */
+    const msg0 = document.getElementById('m0');
+    const msg1 = document.getElementById('m1');
+    const b1 = document.getElementById('b1');
+    const msg2 = document.getElementById('m2');
+    const msg3 = document.getElementById('m3');
+    const b3 = document.getElementById('b3');
+    const h1 = document.getElementById('h1');
+    const h2 = document.getElementById('h2');
+
+    const r1 = "The model achieved **94.3% accuracy** in low-resource settings — an 18.7% improvement over all baselines tested in the study.";
+    const r2 = "It was trained on **3 billion tokens** with a 32,768-token context window, using a novel attention mechanism that cuts compute by 40%.";
+
+    function typeText(el, text, cb) {
+      let i = 0;
+      el.innerHTML = '';
+      const cursor = document.createElement('span');
+      cursor.className = 'typing-cursor';
+      el.appendChild(cursor);
+      const iv = setInterval(() => {
+        if (i < text.length) {
+          el.insertBefore(document.createTextNode(text[i]), cursor);
+          i++;
+        } else {
+          clearInterval(iv);
+          cursor.remove();
+          if (cb) cb();
+        }
+      }, 22);
+    }
+
+    function runDemo() {
+      h1.classList.remove('active'); h2.classList.remove('active');
+      msg1.style.display = 'none'; msg2.style.display = 'none';
+      msg3.style.display = 'none'; b1.innerHTML = ''; b3.innerHTML = '';
+      msg0.classList.remove('visible'); msg1.classList.remove('visible');
+      msg2.classList.remove('visible'); msg3.classList.remove('visible');
+
+      setTimeout(() => { msg0.classList.add('visible'); }, 400);
+      setTimeout(() => {
+        h1.classList.add('active');
+        msg1.style.display = 'flex';
+        setTimeout(() => msg1.classList.add('visible'), 50);
+        typeText(b1, r1, () => {
+          setTimeout(() => {
+            msg2.style.display = 'flex';
+            setTimeout(() => msg2.classList.add('visible'), 50);
+            setTimeout(() => {
+              h1.classList.remove('active'); h2.classList.add('active');
+              msg3.style.display = 'flex';
+              setTimeout(() => msg3.classList.add('visible'), 50);
+              typeText(b3, r2, () => {
+                setTimeout(runDemo, 5000);
+              });
+            }, 800);
+          }, 1200);
+        });
+      }, 1200);
+    }
+
+    const demoObs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) { demoObs.disconnect(); runDemo(); }
+    }, { threshold: 0.3 });
+    demoObs.observe(document.getElementById('demo'));
+
+    /* ── USER CHAT INPUT ── */
+    function sendUserMsg() {
+      const input = document.getElementById('chatInput');
+      const val = input.value.trim();
+      if (!val) return;
+      const msgs = document.getElementById('chatMessages');
+      const userDiv = document.createElement('div');
+      userDiv.className = 'msg msg-user visible';
+      userDiv.innerHTML = `<div class="msg-avatar user">You</div><div class="msg-bubble">${val}</div>`;
+      msgs.appendChild(userDiv);
+      input.value = '';
+
+      setTimeout(() => {
+        const aiDiv = document.createElement('div');
+        aiDiv.className = 'msg msg-ai visible';
+        const bub = document.createElement('div');
+        bub.className = 'msg-bubble';
+        aiDiv.innerHTML = `<div class="msg-avatar ai">IP</div>`;
+        aiDiv.appendChild(bub);
+        msgs.appendChild(aiDiv);
+        msgs.scrollTop = msgs.scrollHeight;
+        typeText(bub, "Based on the uploaded PDF, here's what I found relevant to your question...");
+        msgs.scrollTop = msgs.scrollHeight;
+      }, 700);
+    }
+    document.getElementById('chatInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') sendUserMsg();
+    });
+  </script>
+</body>
+
+</html>

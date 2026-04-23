@@ -4,7 +4,7 @@ requests
 tqdm
 python-dotenv
 pypdf
-sentence-transformers
+
 pinecone
 langchain
 langchain-community

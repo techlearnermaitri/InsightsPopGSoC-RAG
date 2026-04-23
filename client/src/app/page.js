@@ -12,33 +12,19 @@ export default function Page() {
   const { activeUser, sessions, switchSession, removeSession, loading } = useSession();
   const [validating, setValidating] = useState(true);
 
-  // Validate active user session with backend
+  // Trust the localStorage-persisted session. Only redirect if there is
+  // genuinely no stored user (avoids kicking logged-in users out on refresh
+  // because the backend has no persistent cookie/token to validate against).
   useEffect(() => {
-    const validateSession = async () => {
-      if (loading) return;
-      
-      if (!activeUser) {
-        router.push("/auth");
-        return;
-      }
+    if (loading) return;
 
-      try {
-        const res = await fetch("/api/auth/me", {
-          headers: { "x-user-email": activeUser?.email || "" },
-        });
+    if (!activeUser) {
+      router.push("/auth");
+      return;
+    }
 
-        if (!res.ok) {
-          router.push("/auth");
-          return;
-        }
-
-        setValidating(false);
-      } catch {
-        router.push("/auth");
-      }
-    };
-
-    validateSession();
+    // User is present in localStorage → mark as validated immediately
+    setValidating(false);
   }, [activeUser, loading, router]);
 
   const handleLogoutSession = (index) => {
