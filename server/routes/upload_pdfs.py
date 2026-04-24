@@ -25,8 +25,7 @@ async def upload_pdf(files: List[UploadFile] = File(...), x_user_email: Optional
 
         # Offload the CPU/IO-heavy work (HuggingFace embedding + Pinecone upsert)
         # to a thread pool so we don't block the async event loop.
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, load_vector_store_from_data, file_data, x_user_email)
+        await asyncio.get_running_loop().run_in_executor(None, load_vector_store_from_data, file_data, x_user_email)
 
         logger.info("Documents added to vectorstore successfully")
         return {"message": "files processed and vector store updated"}

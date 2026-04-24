@@ -30,13 +30,14 @@ EMBEDDING_MODEL = os.getenv(
 )
 EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "768"))
  
-UPLOAD_DIR = "./uploaded_docs"
+# Absolute path so it resolves correctly regardless of CWD (Docker, Render, local).
+UPLOAD_DIR = str(Path(__file__).parent.parent / "uploaded_docs")
 try:
     os.makedirs(UPLOAD_DIR, exist_ok=True)
 except Exception as e:
     import sys
     print(f"[WARNING] Failed to create upload directory: {e}", file=sys.stderr)
-    # Directory will be created when first needed 
+    # Directory will be created when first needed
 
 # Initialize pinecone instance only when needed
 def get_pinecone_index():
@@ -113,7 +114,9 @@ def load_vector_store_from_data(file_data: list, user_email: str):
     embed_model = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
     file_paths = []
 
-    conn = sqlite3.connect(DB_FILE)
+    # check_same_thread=False is required because this function runs inside
+    # a ThreadPoolExecutor (via run_in_executor) — not the main thread.
+    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
     cursor = conn.cursor()
 
     for fd in file_data:

@@ -1,0 +1,25 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Secrets — never bake into the image
+.env
+.env.*
+
+# Uploaded files — these should be in a mounted volume in production
+uploaded_docs/
+
+# Frontend (built separately or not needed in backend image)
+client/node_modules/
+client/.next/
+
+# Dev / editor artifacts
+.git/
+.gitignore
+.vscode/
+.DS_Store
+*.md
