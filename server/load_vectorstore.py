@@ -68,40 +68,9 @@ def get_pinecone_index():
 from server.database import DB_FILE
 import sqlite3
 
-# Load, split, embed and upsert pdf content
-def load_vector_store(uploaded_files, user_email):
-    # Ensure upload directory exists before saving files
-    try:
-        os.makedirs(UPLOAD_DIR, exist_ok=True)
-    except Exception as e:
-        raise ValueError(f"Failed to create upload directory: {e}")
-    
-    # Local embeddings to avoid Gemini quota issues during upload.
-    embed_model = HuggingFaceEmbeddings(
-        model_name=EMBEDDING_MODEL,
-    )
-    file_paths = []
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
 
-    # 1. Upload 
-    for file in uploaded_files:
-        save_path = Path(UPLOAD_DIR) / file.filename
-        content = file.file.read() # Read the bytes
-        with open(save_path, "wb") as f:
-            f.write(content)
-        file_paths.append(str(save_path))
-        
-        # Save to SQLite DB
-        cursor.execute(
-            "INSERT INTO user_files (user_email, custom_name, filename) VALUES (?, ?, ?)",
-            (user_email, file.filename, file.filename)
-        )
-    
-    conn.commit()
-    conn.close()
-    
-    # 2. Split
+def _process_file_paths(file_paths, user_email, embed_model):
+    """Shared logic: split, embed, and upsert a list of saved file paths."""
     for file_path in file_paths:
         loader = PyPDFLoader(file_path)
         documents = loader.load()
@@ -116,21 +85,73 @@ def load_vector_store(uploaded_files, user_email):
             meta["text"] = chunk.page_content
             meta["user_email"] = user_email
             metadata.append(meta)
-        
-        # FIXED BUG: Use len(chunks) instead of chunks
+
         ids = [f"{Path(file_path).stem}_{i}" for i in range(len(chunks))]
-        
-        # 3. Embedding 
-        print("Embedding and upserting chunks...")
+
+        print(f"Embedding {len(chunks)} chunks for {Path(file_path).name}...")
         embeddings = embed_model.embed_documents(texts)
-        
-        # 4. Upsert
-        print("Upserting embeddings...")
+
+        print("Upserting embeddings to Pinecone...")
         index = get_pinecone_index()
         with tqdm(total=len(embeddings), desc="Upserting to Pinecone") as progress:
-            # zip needs to be converted to a list for Pinecone
             vectors_to_upsert = list(zip(ids, embeddings, metadata))
             index.upsert(vectors=vectors_to_upsert)
             progress.update(len(embeddings))
 
-        print(f"Finished processing for {file_path}")
+        print(f"Finished processing {Path(file_path).name}")
+
+
+# ── Thread-safe version (called from async route via run_in_executor) ──────────
+# Accepts pre-read bytes so UploadFile objects are never accessed inside a thread.
+def load_vector_store_from_data(file_data: list, user_email: str):
+    """
+    file_data: list of {"filename": str, "content": bytes}
+    Saves the files, logs them to SQLite, then embeds & upserts to Pinecone.
+    """
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+    embed_model = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
+    file_paths = []
+
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+
+    for fd in file_data:
+        save_path = Path(UPLOAD_DIR) / fd["filename"]
+        with open(save_path, "wb") as f:
+            f.write(fd["content"])
+        file_paths.append(str(save_path))
+
+        cursor.execute(
+            "INSERT INTO user_files (user_email, custom_name, filename) VALUES (?, ?, ?)",
+            (user_email, fd["filename"], fd["filename"]),
+        )
+
+    conn.commit()
+    conn.close()
+
+    _process_file_paths(file_paths, user_email, embed_model)
+
+
+# ── Legacy sync version (kept for backwards-compat if needed elsewhere) ────────
+def load_vector_store(uploaded_files, user_email):
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    embed_model = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
+    file_paths = []
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+
+    for file in uploaded_files:
+        save_path = Path(UPLOAD_DIR) / file.filename
+        content = file.file.read()
+        with open(save_path, "wb") as f:
+            f.write(content)
+        file_paths.append(str(save_path))
+        cursor.execute(
+            "INSERT INTO user_files (user_email, custom_name, filename) VALUES (?, ?, ?)",
+            (user_email, file.filename, file.filename),
+        )
+
+    conn.commit()
+    conn.close()
+    _process_file_paths(file_paths, user_email, embed_model)
