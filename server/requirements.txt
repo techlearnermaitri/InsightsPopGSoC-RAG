@@ -16,5 +16,6 @@ fastapi
 uvicorn[standard]
 python-multipart
 email-validator
+supabase
 
 #uv pip install -r requirements.txt

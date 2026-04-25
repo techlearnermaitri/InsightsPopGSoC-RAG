@@ -1,5 +1,6 @@
 import os
 import time
+import tempfile
 from pathlib import Path
 from dotenv import load_dotenv
 from tqdm.auto import tqdm
@@ -102,6 +103,21 @@ def _process_file_paths(file_paths, user_email, embed_model):
         print(f"Finished processing {Path(file_path).name}")
 
 
+# ── Supabase Storage client (optional — only used when env vars are set) ─────
+# If SUPABASE_URL / SUPABASE_KEY are absent (local dev), uploads are skipped.
+def _get_supabase():
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_KEY")
+    if not url or not key:
+        return None
+    try:
+        from supabase import create_client
+        return create_client(url, key)
+    except ImportError:
+        print("[WARNING] supabase package not installed — skipping cloud storage")
+        return None
+
+
 # ── Thread-safe version (called from async route via run_in_executor) ──────────
 # Accepts pre-read bytes so UploadFile objects are never accessed inside a thread.
 def load_vector_store_from_data(file_data: list, user_email: str):
@@ -112,6 +128,7 @@ def load_vector_store_from_data(file_data: list, user_email: str):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
 
     embed_model = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
+    supabase = _get_supabase()
     file_paths = []
 
     # check_same_thread=False is required because this function runs inside
@@ -120,7 +137,10 @@ def load_vector_store_from_data(file_data: list, user_email: str):
     cursor = conn.cursor()
 
     for fd in file_data:
+        # 1. Write to a local temp file — PyPDFLoader requires a file path on disk.
+        #    On Render this is ephemeral, which is fine: we only need it for processing.
         save_path = Path(UPLOAD_DIR) / fd["filename"]
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
         with open(save_path, "wb") as f:
             f.write(fd["content"])
         file_paths.append(str(save_path))
@@ -133,7 +153,29 @@ def load_vector_store_from_data(file_data: list, user_email: str):
     conn.commit()
     conn.close()
 
+    # 2. Process: split → embed → upsert to Pinecone (this is the persistent store).
     _process_file_paths(file_paths, user_email, embed_model)
+
+    # 3. Upload to Supabase Storage for file persistence across Render restarts.
+    #    Runs AFTER processing so a Supabase failure doesn't block the RAG pipeline.
+    if supabase:
+        for fd in file_data:
+            try:
+                supabase.storage.from_("pdfs").upload(
+                    path=fd["filename"],
+                    file=fd["content"],
+                    file_options={"content-type": "application/pdf"},
+                )
+                print(f"[Supabase] Uploaded {fd['filename']}")
+            except Exception as e:
+                print(f"[Supabase] Upload failed for {fd['filename']}: {e}")
+
+    # 4. Clean up temp files to avoid filling ephemeral disk on Render.
+    for fp in file_paths:
+        try:
+            os.remove(fp)
+        except OSError:
+            pass
 
 
 # ── Legacy sync version (kept for backwards-compat if needed elsewhere) ────────
