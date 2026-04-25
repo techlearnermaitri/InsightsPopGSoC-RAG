@@ -26,4 +26,3 @@ EXPOSE 8000
 # Run the FastAPI app via uvicorn
 # Entry point: server/main.py → `app = FastAPI(...)`
 CMD ["sh", "-c", "uvicorn server.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
-
