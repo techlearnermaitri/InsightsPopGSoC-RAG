@@ -42,8 +42,8 @@ async def ask_question(
                 # Match path formatting from PyPDFLoader
                 pinecone_filter["source"] = f"uploaded_docs/{real_filename}"
 
-        # Import HuggingFaceEmbeddings here (not at module level) to avoid startup hang
-        from langchain_huggingface import HuggingFaceEmbeddings
+        # Import get_cached_embedding_model to use cached model instead of downloading every time
+        from server.load_vectorstore import get_cached_embedding_model
         
         # embed model + pinecone setup
         pinecone_api_key = os.environ.get("PINECONE_API_KEY")
@@ -57,11 +57,9 @@ async def ask_question(
         pinecone_index_name = os.environ.get("PINECONE_INDEX_NAME", "insights-pop")
         pc = Pinecone(api_key=pinecone_api_key)
         index = pc.Index(pinecone_index_name)
-        embedding_model = os.getenv(
-            "EMBEDDING_MODEL",
-            "sentence-transformers/all-mpnet-base-v2",
-        )
-        embed_model = HuggingFaceEmbeddings(model_name=embedding_model)
+        
+        # Use cached embedding model to avoid re-downloading
+        embed_model = get_cached_embedding_model()
         embedded_query = embed_model.embed_query(question)
         
         # Apply filters

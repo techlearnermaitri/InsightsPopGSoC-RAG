@@ -13,6 +13,7 @@ langchain-groq
 langchain-huggingface
 langchain-text-splitters
 sentence-transformers
+transformers
 fastapi
 uvicorn[standard]
 python-multipart
