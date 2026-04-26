@@ -43,7 +43,7 @@ async def ask_question(
                 pinecone_filter["source"] = f"uploaded_docs/{real_filename}"
 
         # Import HuggingFaceEmbeddings here (not at module level) to avoid startup hang
-        from langchain_community.embeddings import HuggingFaceEmbeddings
+        from langchain_huggingface import HuggingFaceEmbeddings
         
         # embed model + pinecone setup
         pinecone_api_key = os.environ.get("PINECONE_API_KEY")

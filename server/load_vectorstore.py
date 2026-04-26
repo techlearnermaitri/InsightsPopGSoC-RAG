@@ -7,7 +7,7 @@ from tqdm.auto import tqdm
 from pinecone import Pinecone, ServerlessSpec
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 
 # Load environment variables — use explicit path so it works on hot-reload subprocesses
 # Try loading from .env, but don't fail if it doesn't exist (Render uses env vars directly)

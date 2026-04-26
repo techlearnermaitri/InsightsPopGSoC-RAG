@@ -1,7 +1,7 @@
 #this will handle llm response and prompt
 from langchain_core.prompts import PromptTemplate
+from langchain_core.runnables import RunnablePassthrough
 from langchain_groq import ChatGroq
-from langchain_classic.chains import RetrievalQA
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -17,6 +17,10 @@ else:
         load_dotenv(dotenv_path=_root_env_path)
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+def _format_docs(docs):
+    """Format documents for the prompt"""
+    return "\n\n".join(doc.page_content for doc in docs)
 
 def get_llm_chain(retriever):
     if not GROQ_API_KEY:
@@ -67,11 +71,41 @@ def get_llm_chain(retriever):
         ✅ **Answer**:
         """
         )
-    return RetrievalQA.from_chain_type(
-        llm=llm,
-        chain_type="stuff",
-        retriever=retriever,
-        chain_type_kwargs={"prompt": prompt},
-        return_source_documents=True,
+    
+    # Create a simple retrieval chain using modern LangChain approach
+    # This replaces the deprecated RetrievalQA
+    chain = (
+        {"context": retriever | _format_docs, "question": RunnablePassthrough()}
+        | prompt
+        | llm
     )
+    
+    # Wrapper to return source documents for compatibility
+    class RAGChain:
+        def __init__(self, chain, retriever):
+            self.chain = chain
+            self.retriever = retriever
+        
+        def __call__(self, inputs):
+            """Make the chain callable like the original RetrievalQA"""
+            # Handle both dict input {"query": "..."} and string input
+            if isinstance(inputs, dict):
+                question = inputs.get("query", "")
+            else:
+                question = str(inputs)
+            
+            # Get the answer
+            answer = self.chain.invoke(question)
+            # Get source documents from retriever
+            docs = self.retriever._get_relevant_documents(question) if hasattr(self.retriever, '_get_relevant_documents') else self.retriever.get_relevant_documents(question)
+            
+            return {
+                "result": str(answer.content) if hasattr(answer, 'content') else str(answer),
+                "source_documents": docs
+            }
+        
+        def invoke(self, inputs):
+            return self(inputs)
+    
+    return RAGChain(chain, retriever)
     
