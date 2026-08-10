@@ -130,14 +130,4 @@ InsightsPopGSoC-RAG/
 - **API key errors**: Verify your Google API key is set correctly in the `.env` file.
 - **CORS errors**: Make sure the frontend URL is included in the CORS allowed origins in `app.py`.
 
-## 📝 License
 
-[Add your license here]
-
-## 🤝 Contributing
-
-[Add contribution guidelines here]
-
-## 👤 Author
-
-[Add your name/contact here]
